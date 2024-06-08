@@ -21,8 +21,11 @@ Commands of interest would be:
 All information regarding connecting to the container's PostgreSQL is available in [`.env`](.env).
 
 ```sh
-docker-compose start
+docker-compose up -d
 source .env
 cargo run $DATABASE_URL
+
+# once done...
+docker-compose stop
 ```
 
