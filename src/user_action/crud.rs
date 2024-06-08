@@ -1,10 +1,16 @@
 use sqlx::Row;
 use std::error::Error;
 
+use super::VaultCred;
+
 struct Cred {
     pub usr: String,
     pub pass: String,
     pub website: String,
+}
+
+pub async fn create_vault(vc: VaultCred, pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
+    todo!()
 }
 
 async fn create(cred: &Cred, pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {

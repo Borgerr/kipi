@@ -1,6 +1,5 @@
 use std::error::Error;
 
-mod crud;
 mod user_action;
 
 use user_action::handle_login;
@@ -17,7 +16,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     sqlx::migrate!("./migrations").run(&pool).await?;
 
-    handle_login(&pool);
+    handle_login(&pool).await?;
 
     Ok(())
 }
