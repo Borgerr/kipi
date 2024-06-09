@@ -4,7 +4,7 @@ use std::{
 };
 
 mod crud;
-use crud::create_vault;
+use crud::{access_vault, create_vault, delete_vault};
 
 enum LoginAction {
     Create,
@@ -50,9 +50,9 @@ pub async fn handle_login(pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
                 if let Some(LoginAction::Create) = choice {
                     create_vault(vaultcred, pool).await?;
                 } else if let Some(LoginAction::Access) = choice {
-                    todo!()
+                    access_vault(vaultcred, pool).await?;
                 } else if let Some(LoginAction::Delete) = choice {
-                    todo!()
+                    delete_vault(vaultcred, pool).await?;
                 }
             }
         } else {
