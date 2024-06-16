@@ -9,19 +9,22 @@ use super::VaultCred;
 struct Cred {
     pub usr: String,
     pub pass: String,
-    pub website: String,
+    pub service: String,
 }
 
 enum AccessAction {
     // TODO: finish planning with this
     // should integrate with `select_action`
-    Create { website: String },
-    Read { website: String },
-    Update { website: String },
-    Delete { website: String },
+    Create { service: String },
+    Read { service: String },
+    Update { service: String },
+    Delete { service: String },
 }
 
 pub async fn create_vault(vc: VaultCred, pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
+    // TODO: check postgreSQL/sqlx docs, create a new table or a new user with name and pass
+    // within the database, and verify that it's in long-term.
+    // Should also look into ways to combat SQL injection
     todo!()
 }
 
@@ -47,22 +50,22 @@ fn select_action() -> AccessAction {
         match buffer.as_str() {
             "1\n" => {
                 break AccessAction::Create {
-                    website: get_website(),
+                    service: get_service(),
                 }
             }
             "2\n" => {
                 break AccessAction::Read {
-                    website: get_website(),
+                    service: get_service(),
                 }
             }
             "3\n" => {
                 break AccessAction::Update {
-                    website: get_website(),
+                    service: get_service(),
                 }
             }
             "4\n" => {
                 break AccessAction::Delete {
-                    website: get_website(),
+                    service: get_service(),
                 }
             }
             _ => continue,
@@ -70,9 +73,9 @@ fn select_action() -> AccessAction {
     }
 }
 
-fn get_website() -> String {
+fn get_service() -> String {
     let mut buffer = String::new();
-    print!("Website: ");
+    print!("Service: ");
     io::stdin().read_line(&mut buffer).unwrap(); // TODO: handle this error
     String::from(buffer.trim())
 }
@@ -80,44 +83,4 @@ fn get_website() -> String {
 async fn verify_vaultcred(vc: VaultCred, pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
     // TODO: verify previous table with vault credentials exists, and that these are the correct credentials
     todo!()
-}
-
-async fn create(cred: &Cred, pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
-    let query = "INSERT INTO creds (usr, pass, website) VALUES ($1, $2, $3)";
-
-    sqlx::query(query)
-        .bind(&cred.usr)
-        .bind(&cred.pass)
-        .bind(&cred.website)
-        .execute(pool)
-        .await?;
-
-    Ok(())
-}
-
-async fn update(cred: &Cred, website: &str, pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
-    let query = "UPDATE creds SET usr = $1, pass = $2 WHERE website = $3";
-
-    sqlx::query(query)
-        .bind(&cred.usr)
-        .bind(&cred.pass)
-        .bind(&cred.website)
-        .execute(pool)
-        .await?;
-
-    Ok(())
-}
-
-async fn read(pool: &sqlx::PgPool) -> Result<Cred, Box<dyn Error>> {
-    let q_str = "SELECT usr, pass, website FROM creds";
-    let query = sqlx::query(q_str);
-
-    let row = query.fetch_one(pool).await?;
-    let cred = Cred {
-        usr: row.get("usr"),
-        pass: row.get("pass"),
-        website: row.get("website"),
-    };
-
-    Ok(cred)
 }
