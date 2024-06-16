@@ -48,11 +48,11 @@ pub async fn handle_login(pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
                     pass: password,
                 };
                 if let Some(LoginAction::Create) = choice {
-                    create_vault(vaultcred, pool).await?;
+                    create_vault(&vaultcred, pool).await?;
                 } else if let Some(LoginAction::Access) = choice {
-                    access_vault(vaultcred, pool).await?;
+                    access_vault(&vaultcred, pool).await?;
                 } else if let Some(LoginAction::Delete) = choice {
-                    delete_vault(vaultcred, pool).await?;
+                    delete_vault(&vaultcred, pool).await?;
                 }
             }
         } else {

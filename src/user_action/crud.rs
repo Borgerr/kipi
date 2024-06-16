@@ -21,19 +21,27 @@ enum AccessAction {
     Delete { service: String },
 }
 
-pub async fn create_vault(vc: VaultCred, pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
+pub async fn create_vault(vc: &VaultCred, pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
     // TODO: check postgreSQL/sqlx docs, create a new table or a new user with name and pass
     // within the database, and verify that it's in long-term.
     // Should also look into ways to combat SQL injection
-    todo!()
+    let query = "INSERT INTO vaults (nam, pass) VALUES ($1, $2)";
+
+    sqlx::query(query)
+        .bind(&vc.name)
+        .bind(&vc.pass)
+        .execute(pool)
+        .await?;
+
+    Ok(())
 }
 
-pub async fn delete_vault(vc: VaultCred, pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
+pub async fn delete_vault(vc: &VaultCred, pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
     verify_vaultcred(vc, pool).await?;
     todo!()
 }
 
-pub async fn access_vault(vc: VaultCred, pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
+pub async fn access_vault(vc: &VaultCred, pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
     verify_vaultcred(vc, pool).await?;
     todo!()
 }
@@ -80,7 +88,18 @@ fn get_service() -> String {
     String::from(buffer.trim())
 }
 
-async fn verify_vaultcred(vc: VaultCred, pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
+async fn verify_vaultcred(vc: &VaultCred, pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
     // TODO: verify previous table with vault credentials exists, and that these are the correct credentials
+    let query = "SELECT EXISTS(SELECT * from vaults WHERE nam = $1, pass = $2)";
+
+    sqlx::query(query)
+        .bind(&vc.name)
+        .bind(&vc.pass)
+        .execute(pool)
+        .await?;
+
+    // TODO: extract the 1 or 0 result
+    // https://www.tutorialspoint.com/best-way-to-test-if-a-row-exists-in-a-mysql-table
+
     todo!()
 }
