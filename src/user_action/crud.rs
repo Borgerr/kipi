@@ -44,7 +44,7 @@ pub async fn delete_vault(vc: &VaultCred, pool: &sqlx::PgPool) -> Result<(), Box
         // TODO: delete vault
         println!("Deleting vault...");
     }
-    todo!("handle vault access")
+    todo!("handle vault deletion")
 }
 
 pub async fn access_vault(vc: &VaultCred, pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
