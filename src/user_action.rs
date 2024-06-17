@@ -77,11 +77,18 @@ fn read_choice() -> io::Result<Option<LoginAction>> {
 fn read_vaultname() -> io::Result<String> {
     print!("Enter vault name: ");
     io::stdout().flush()?;
-    let mut buffer = String::new();
-    io::stdin().read_line(&mut buffer)?;
-    buffer.pop();
+    let mut vaultname = String::new();
+    io::stdin().read_line(&mut vaultname)?;
+    vaultname.pop();
 
-    Ok(buffer)
+    if vaultname.is_empty() {
+        Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "empty vaultname",
+        ))
+    } else {
+        Ok(vaultname)
+    }
 }
 
 fn read_password() -> io::Result<String> {
@@ -90,5 +97,12 @@ fn read_password() -> io::Result<String> {
     let mut pw = rpassword::read_password()?;
     pw.pop();
 
-    Ok(pw)
+    if pw.is_empty() {
+        Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "empty password",
+        ))
+    } else {
+        Ok(pw)
+    }
 }
