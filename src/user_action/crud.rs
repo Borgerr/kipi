@@ -27,24 +27,55 @@ enum AccessAction {
 pub async fn create_vault(vc: &VaultCred, pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
     if verify_vaultcred(vc, pool).await? {
         println!("Vault using that name already exists, try a different one or log in");
-    } else {
-        let query = "INSERT INTO vaults (nam, pass) VALUES ($1, $2)";
-        sqlx::query(query)
-            .bind(&vc.name)
-            .bind(&vc.pass)
-            .execute(pool)
-            .await?;
+        return Ok(());
     }
+    // create row in vaults
+    let vaults_query = "INSERT INTO vaults (nam, pass) VALUES ($1, $2)";
+    let table_query = format!(
+        "CREATE TABLE {} (
+        usr varchar,
+        pass varchar,
+        service varchar
+        );",
+        vc.name
+    );
 
-    Ok(())
+    let vaults_create = sqlx::query(&vaults_query)
+        .bind(&vc.name)
+        .bind(&vc.pass)
+        .execute(pool);
+
+    // create table for vault
+    let table_create = sqlx::query(&table_query).bind(&vc.name).execute(pool);
+
+    match tokio::join!(vaults_create, table_create) {
+        (Err(e), Err(_)) => Err(Box::new(e)),
+        (Err(e), Ok(_)) => Err(Box::new(e)),
+        (Ok(_), Err(e)) => Err(Box::new(e)),
+        _ => Ok(()),
+    }
 }
 
 pub async fn delete_vault(vc: &VaultCred, pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
-    if verify_vaultcred(vc, pool).await? {
-        // TODO: delete vault
-        println!("Deleting vault...");
+    if !verify_vaultcred(vc, pool).await? {
+        println!("Wrong vault credentials, try again");
+        return Ok(());
     }
-    todo!("handle vault deletion")
+    let vaults_query = format!("DROP TABLE {}", vc.name);
+    let table_query = "DELETE FROM vaults WHERE nam = $1 AND pass = $2";
+
+    let vaults_drop = sqlx::query(&vaults_query).execute(pool);
+    let table_drop = sqlx::query(&table_query)
+        .bind(&vc.name)
+        .bind(&vc.pass)
+        .execute(pool);
+
+    match tokio::join!(vaults_drop, table_drop) {
+        (Err(e), Err(_)) => Err(Box::new(e)),
+        (Err(e), Ok(_)) => Err(Box::new(e)),
+        (Ok(_), Err(e)) => Err(Box::new(e)),
+        _ => Ok(()),
+    }
 }
 
 pub async fn access_vault(vc: &VaultCred, pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {

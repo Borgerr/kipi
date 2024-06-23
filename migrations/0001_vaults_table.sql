@@ -6,9 +6,9 @@ create table vaults (
 create unique index vault_nam_lookup on vaults(nam);
 
 /*
-create table <vaultname>_vault (
+create table <vaultname> (
     usr varchar,
     pass varchar,
     service varchar,
-)
+);
 */
