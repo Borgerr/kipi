@@ -1,3 +1,4 @@
+use copypasta::{ClipboardContext, ClipboardProvider};
 use sqlx::Row;
 use std::{
     error::Error,
@@ -5,12 +6,6 @@ use std::{
 };
 
 use super::{read_name, read_password, VaultCred};
-
-struct Cred {
-    pub usr: String,
-    pub pass: String,
-    pub service: String,
-}
 
 enum AccessAction {
     // TODO: finish planning with this
@@ -21,11 +16,19 @@ enum AccessAction {
     Delete { service: String },
 }
 
+enum ReadQuery {
+    Username,
+    Password,
+}
+
 // TODO: combat SQL injection
 // current implementation is the happiest path there ever was
+// and each query is just begging to be injected
 
 pub async fn create_vault(vc: &VaultCred, pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
     if verify_vaultcred(vc, pool).await? {
+        // TODO: relying on vaultcred allows for vaults with same names but different passwords
+        // change this to some other check
         println!("Vault using that name already exists, try a different one or log in");
         return Ok(());
     }
@@ -33,7 +36,7 @@ pub async fn create_vault(vc: &VaultCred, pool: &sqlx::PgPool) -> Result<(), Box
     let vaults_query = "INSERT INTO vaults (nam, pass) VALUES ($1, $2)";
     let table_query = format!(
         "CREATE TABLE {} (
-        usr varchar,
+        nam varchar,
         pass varchar,
         service varchar
         );",
@@ -87,7 +90,7 @@ pub async fn access_vault(vc: &VaultCred, pool: &sqlx::PgPool) -> Result<(), Box
 
     match select_action() {
         AccessAction::Create { service } => create_action(service, vc, pool).await?,
-        AccessAction::Read { service } => (),
+        AccessAction::Read { service } => read_action(service, vc, pool).await?,
         AccessAction::Update { service } => (),
         AccessAction::Delete { service } => (),
     }
@@ -108,11 +111,15 @@ async fn create_action(
     let name = read_name(String::from("Enter username: "))?;
     let pass = read_password(String::from("Enter password: "))?;
 
-    let query = format!("INSERT INTO {} (nam, pass) VALUES ($1, $2)", vc.name);
+    let query = format!(
+        "INSERT INTO {} (nam, pass, service) VALUES ($1, $2, $3)",
+        vc.name
+    );
 
     sqlx::query(&query)
         .bind(&name)
         .bind(&pass)
+        .bind(&service)
         .execute(pool)
         .await?;
 
@@ -129,7 +136,45 @@ async fn read_action(
         return Ok(());
     }
 
+    let query = match select_user_or_pass() {
+        ReadQuery::Username => format!(
+            "SELECT (SELECT nam FROM {} WHERE service=$1) as result",
+            vc.name
+        ),
+        ReadQuery::Password => format!(
+            "SELECT (SELECT pass FROM {} WHERE service=$1) as result",
+            vc.name
+        ),
+    };
+
+    let res = sqlx::query(&query).bind(&service).fetch_one(pool).await?;
+
+    let mut ctx =
+        ClipboardContext::new().expect("Something went wrong when getting the clipboard context");
+    ctx.set_contents(res.get("result"))
+        .expect("Something went wrong when setting contents of clipboard");
+    let _ = ctx.get_contents().unwrap(); // needed for some reason to actually place in clip tray
+
+    println!("Information copied into your clip tray");
+
     Ok(())
+}
+
+fn select_user_or_pass() -> ReadQuery {
+    loop {
+        println!("Do you want to copy the username or the password?\n1. Username\n2. Password");
+        print!("[1|2] -> ");
+        io::stdout().flush().unwrap();
+
+        let mut buffer = String::new();
+        io::stdin().read_line(&mut buffer).unwrap();
+
+        match buffer.as_str() {
+            "1\n" => break ReadQuery::Username,
+            "2\n" => break ReadQuery::Password,
+            _ => continue,
+        }
+    }
 }
 
 fn select_action() -> AccessAction {
@@ -170,6 +215,7 @@ fn select_action() -> AccessAction {
 fn get_service() -> String {
     let mut buffer = String::new();
     print!("Service: ");
+    io::stdout().flush().unwrap();
     io::stdin().read_line(&mut buffer).unwrap(); // TODO: handle this error
 
     String::from(buffer.trim())

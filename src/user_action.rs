@@ -100,7 +100,6 @@ fn read_password(prompt: String) -> io::Result<String> {
     print!("{}", prompt);
     io::stdout().flush()?;
     let mut pw = rpassword::read_password()?;
-    pw.pop();
 
     if pw.is_empty() {
         Err(io::Error::new(
