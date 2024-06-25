@@ -14,6 +14,7 @@ enum AccessAction {
     Read { service: String },
     Update { service: String },
     Delete { service: String },
+    Quit,
 }
 
 enum ReadQuery {
@@ -88,11 +89,14 @@ pub async fn access_vault(vc: &VaultCred, pool: &sqlx::PgPool) -> Result<(), Box
     }
     println!("Accessing vault...");
 
-    match select_action() {
-        AccessAction::Create { service } => create_action(service, vc, pool).await?,
-        AccessAction::Read { service } => read_action(service, vc, pool).await?,
-        AccessAction::Update { service } => (),
-        AccessAction::Delete { service } => (),
+    loop {
+        match select_action() {
+            AccessAction::Create { service } => create_action(service, vc, pool).await?,
+            AccessAction::Read { service } => read_action(service, vc, pool).await?,
+            AccessAction::Update { service } => update_action(service, vc, pool).await?,
+            AccessAction::Delete { service } => delete_action(service, vc, pool).await?,
+            AccessAction::Quit => break,
+        }
     }
 
     Ok(())
@@ -160,6 +164,39 @@ async fn read_action(
     Ok(())
 }
 
+async fn update_action(
+    service: String,
+    vc: &VaultCred,
+    pool: &sqlx::PgPool,
+) -> Result<(), Box<dyn Error>> {
+    if !service_exists(&service, vc, pool).await? {
+        println!("This service doesn't exist in this vault. Please try something else");
+        return Ok(());
+    }
+
+    // really just a delete followed by an update
+    delete_action(service.clone(), vc, pool).await?;
+    create_action(service, vc, pool).await?;
+
+    Ok(())
+}
+
+async fn delete_action(
+    service: String,
+    vc: &VaultCred,
+    pool: &sqlx::PgPool,
+) -> Result<(), Box<dyn Error>> {
+    if !service_exists(&service, vc, pool).await? {
+        println!("This service doesn't exist in this vault. Please try something else");
+        return Ok(());
+    }
+
+    let query = format!("DELETE FROM {} WHERE service = $1", vc.name);
+    sqlx::query(&query).bind(service).execute(pool).await?;
+
+    Ok(())
+}
+
 fn select_user_or_pass() -> ReadQuery {
     loop {
         println!("Do you want to copy the username or the password?\n1. Username\n2. Password");
@@ -179,8 +216,8 @@ fn select_user_or_pass() -> ReadQuery {
 
 fn select_action() -> AccessAction {
     loop {
-        println!("Select action:\n1. Create\n2. Read\n3. Update\n4. Delete");
-        print!("[1|2|3|4] -> ");
+        println!("Select action:\n1. Create\n2. Read\n3. Update\n4. Delete\nq. Quit");
+        print!("[1|2|3|4|q] -> ");
         io::stdout().flush().unwrap();
 
         let mut buffer = String::new();
@@ -207,6 +244,7 @@ fn select_action() -> AccessAction {
                     service: get_service(),
                 }
             }
+            "q\n" => break AccessAction::Quit,
             _ => continue,
         }
     }

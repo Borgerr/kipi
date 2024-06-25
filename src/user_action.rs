@@ -99,7 +99,7 @@ fn read_name(prompt: String) -> io::Result<String> {
 fn read_password(prompt: String) -> io::Result<String> {
     print!("{}", prompt);
     io::stdout().flush()?;
-    let mut pw = rpassword::read_password()?;
+    let pw = rpassword::read_password()?;
 
     if pw.is_empty() {
         Err(io::Error::new(
