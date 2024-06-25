@@ -23,9 +23,18 @@ All information regarding connecting to the container's PostgreSQL is available 
 ```sh
 docker-compose up -d
 source .env
-cargo run $DATABASE_URL
+cargo run $DATABASE_URL # sourced from .env
 
 # once done...
 docker-compose stop
 ```
 
+### Relying on a Different Database
+
+The project as is assumes a fresh postgres user instance.
+If you want to use your own database outside of the provided docker containers,
+the process would be similar- just point the `kipi` instance to your database's URL and let loose.
+
+```sh
+cargo run $DATABASE_URL # own postgres URL
+```
