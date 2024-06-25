@@ -4,7 +4,7 @@ use std::{
     io::{self, Write},
 };
 
-use super::VaultCred;
+use super::{read_name, read_password, VaultCred};
 
 struct Cred {
     pub usr: String,
@@ -79,11 +79,57 @@ pub async fn delete_vault(vc: &VaultCred, pool: &sqlx::PgPool) -> Result<(), Box
 }
 
 pub async fn access_vault(vc: &VaultCred, pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
-    if verify_vaultcred(vc, pool).await? {
-        // TODO: handle vault access
-        println!("Accessing vault...");
+    if !verify_vaultcred(vc, pool).await? {
+        println!("Wrong vault credentials, try again");
+        return Ok(());
     }
-    todo!("handle vault access")
+    println!("Accessing vault...");
+
+    match select_action() {
+        AccessAction::Create { service } => create_action(service, vc, pool).await?,
+        AccessAction::Read { service } => (),
+        AccessAction::Update { service } => (),
+        AccessAction::Delete { service } => (),
+    }
+
+    Ok(())
+}
+
+async fn create_action(
+    service: String,
+    vc: &VaultCred,
+    pool: &sqlx::PgPool,
+) -> Result<(), Box<dyn Error>> {
+    if service_exists(&service, vc, pool).await? {
+        println!("An entry for this service already exists. Please try something else");
+        return Ok(());
+    }
+
+    let name = read_name(String::from("Enter username: "))?;
+    let pass = read_password(String::from("Enter password: "))?;
+
+    let query = format!("INSERT INTO {} (nam, pass) VALUES ($1, $2)", vc.name);
+
+    sqlx::query(&query)
+        .bind(&name)
+        .bind(&pass)
+        .execute(pool)
+        .await?;
+
+    Ok(())
+}
+
+async fn read_action(
+    service: String,
+    vc: &VaultCred,
+    pool: &sqlx::PgPool,
+) -> Result<(), Box<dyn Error>> {
+    if !service_exists(&service, vc, pool).await? {
+        println!("This service doesn't exist in this vault. Please try something else");
+        return Ok(());
+    }
+
+    Ok(())
 }
 
 fn select_action() -> AccessAction {
@@ -139,5 +185,21 @@ async fn verify_vaultcred(vc: &VaultCred, pool: &sqlx::PgPool) -> Result<bool, B
         .await?;
 
     let b: bool = res.get("result");
+    Ok(b)
+}
+
+async fn service_exists(
+    service: &String,
+    vc: &VaultCred,
+    pool: &sqlx::PgPool,
+) -> Result<bool, Box<dyn Error>> {
+    let query = format!(
+        "SELECT EXISTS(SELECT * from {} WHERE service = $1) as result",
+        vc.name
+    );
+
+    let res = sqlx::query(&query).bind(&service).fetch_one(pool).await?;
+
+    let b = res.get("result");
     Ok(b)
 }

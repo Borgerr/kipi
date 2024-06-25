@@ -42,7 +42,12 @@ pub async fn handle_login(pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
                 println!("Please select a valid action");
                 continue;
             }
-            if let (Ok(vaultname), Ok(password)) = (read_vaultname(), read_password()) {
+
+            let name_prompt = String::from("Enter vault name: ");
+            let pass_prompt = String::from("Enter vault password: ");
+            if let (Ok(vaultname), Ok(password)) =
+                (read_name(name_prompt), read_password(pass_prompt))
+            {
                 let vaultcred = VaultCred {
                     name: vaultname,
                     pass: password,
@@ -74,25 +79,25 @@ fn read_choice() -> io::Result<Option<LoginAction>> {
     })
 }
 
-fn read_vaultname() -> io::Result<String> {
-    print!("Enter vault name: ");
+fn read_name(prompt: String) -> io::Result<String> {
+    print!("{}", prompt);
     io::stdout().flush()?;
-    let mut vaultname = String::new();
-    io::stdin().read_line(&mut vaultname)?;
-    vaultname.pop();
+    let mut name = String::new();
+    io::stdin().read_line(&mut name)?;
+    name.pop();
 
-    if vaultname.is_empty() {
+    if name.is_empty() {
         Err(io::Error::new(
             io::ErrorKind::InvalidInput,
             "empty vaultname",
         ))
     } else {
-        Ok(vaultname)
+        Ok(name)
     }
 }
 
-fn read_password() -> io::Result<String> {
-    print!("Enter vault password: ");
+fn read_password(prompt: String) -> io::Result<String> {
+    print!("{}", prompt);
     io::stdout().flush()?;
     let mut pw = rpassword::read_password()?;
     pw.pop();
