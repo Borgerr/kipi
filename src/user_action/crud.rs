@@ -8,8 +8,6 @@ use std::{
 use super::{read_name, read_password, VaultCred};
 
 enum AccessAction {
-    // TODO: finish planning with this
-    // should integrate with `select_action`
     Create { service: String },
     Read { service: String },
     Update { service: String },
@@ -27,9 +25,7 @@ enum ReadQuery {
 // and each query is just begging to be injected
 
 pub async fn create_vault(vc: &VaultCred, pool: &sqlx::PgPool) -> Result<(), Box<dyn Error>> {
-    if verify_vaultcred(vc, pool).await? {
-        // TODO: relying on vaultcred allows for vaults with same names but different passwords
-        // change this to some other check
+    if vaultname_exists(vc, pool).await? {
         println!("Vault using that name already exists, try a different one or log in");
         return Ok(());
     }
@@ -267,6 +263,14 @@ async fn verify_vaultcred(vc: &VaultCred, pool: &sqlx::PgPool) -> Result<bool, B
         .bind(&vc.pass)
         .fetch_one(pool)
         .await?;
+
+    let b: bool = res.get("result");
+    Ok(b)
+}
+
+async fn vaultname_exists(vc: &VaultCred, pool: &sqlx::PgPool) -> Result<bool, Box<dyn Error>> {
+    let query = "SELECT EXISTS(SELECT * from vaults WHERE nam = $1) as result";
+    let res = sqlx::query(query).bind(&vc.name).fetch_one(pool).await?;
 
     let b: bool = res.get("result");
     Ok(b)
