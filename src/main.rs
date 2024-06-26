@@ -1,6 +1,8 @@
-use sqlx::Connection;
-use sqlx::Row;
 use std::error::Error;
+
+mod user_action;
+
+use user_action::handle_login;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -10,13 +12,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .expect("(!) need to provide PostgreSQL URL as first argument"),
     );
 
-    let mut conn = sqlx::postgres::PgConnection::connect(&url).await?;
+    let pool = sqlx::postgres::PgPool::connect(&url).await?;
 
-    let res = sqlx::query("SELECT 1 + 1 as sum")
-        .fetch_one(&mut conn)
-        .await?;
-    let sum: i32 = res.get("sum");
-    println!("1 + 1 = {}", sum);
+    sqlx::migrate!("./migrations").run(&pool).await?;
+
+    handle_login(&pool).await?;
 
     Ok(())
 }
