@@ -38,3 +38,11 @@ the process would be similar- just point the `kipi` instance to your database's 
 ```sh
 cargo run $DATABASE_URL # own postgres URL
 ```
+
+#### SQL Injection Challenge
+
+Obviously, this project is mostly implemented for fun.
+And, what's more fun than having your vault broken into,
+and your keys stolen?
+If you can find any relevant SQL injection tactics,
+please make an [issue](<https://github.com/Borgerr/kipi/issues>).
